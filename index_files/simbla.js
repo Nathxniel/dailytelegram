@@ -188,30 +188,105 @@ var Simbla = (function () {
 
 
 
-    $.fn.old_val = $.fn.val;
-    $.fn.val = function (val) {
-        var T = this;
-        var target = T.attr('targetclass')
-        // 3 arguments to set val only if exists
-        if (target && (T.data().select2 || T.is('select')) && val !== undefined && arguments[2] === undefined && typeof val !== "object" && !T.prop('multiple')) {
-            if (T.find('option[value="' + val + '"]').length == 0) {
-                //if (arguments.length == 2)
-                T.append(new Option(arguments[1] || val, val, true, true));
-                if (val && arguments.length == 1)
-                    Simbla.Object.extend(target).createWithoutData(val).fetch().then(function (obj) {
-                        T.find('option[value="' + obj.id + '"]').remove()
-                        T.append(new Option(decodeEntities(getTextKeyValue(obj, T)), obj.id, true, true)).trigger('change');
-                    });
-            }
 
-        }
-        return T.old_val.apply(T, arguments);
-
-    };
     return _simbla;
 
 })();
-var datetimepickeroptions = {
+var _roles
+
+function getRoles() {
+    if (_roles)
+        return Simbla.Promise.resolve(_roles)
+    var query = new Simbla.Query(Simbla.Role);
+    query.select(["name", "color", "description"])
+    return query.find().then(function (roles) {
+        _roles = roles;
+        return roles;
+    })
+}
+var _users;
+
+function getUsers() {
+    if (_users)
+        return Simbla.Promise.resolve(_users)
+    var query = new Simbla.Query(Simbla.User);
+    return query.find().then(function (users) {
+        _users = users;
+        return users;
+    });
+}
+
+function buildACLList(roles, users, acl) {
+    getRoles().then(function (rls) {
+        rls.forEach(function (r) {
+            var li = $('<li>');
+            var isChecked = acl && acl.getRoleReadAccess(r);
+            li.append($('<label>').addClass('checkbox').append($("<span>").addClass('lbl').text(r.get('name')), $('<input type="checkbox" />').data('acl', r).prop('checked', isChecked)));
+            roles.append(li);
+        });
+
+
+    });
+    getUsers().then(function (usr) {
+        usr.forEach(function (u) {
+            var li = $('<li>');
+            var isChecked = acl && acl.getReadAccess(u)
+            li.append($('<label>').addClass('checkbox').append($("<span>").addClass('lbl').text(u.get("name") || u.get('username')), $('<input type="checkbox" />').prop('checked', isChecked).data('acl', u)));
+            users.append(li);
+        });
+
+    });
+}
+
+function setACL(acl, roles, users) {
+    roles && roles.find('input:checked').each(function () {
+        var role = $(this).data('acl');
+        acl.setRoleReadAccess(role, true)
+    })
+    users && users.find('input:checked').each(function () {
+        var user = $(this).data('acl');
+        acl.setReadAccess(user, true)
+    });
+    return acl;
+}
+
+
+function getMyRoles() {
+    if (!Simbla.User.current()) throw "no user";
+    var q = new Parse.Query('_Role').equalTo('users', Simbla.User.current());
+    q.select(["name", "color", "description"])
+    return q.find()
+}
+var _schema
+
+function getSchema() {
+    if (_schema) return Simbla.Promise.resolve(_schema);
+    return Simbla.Cloud.run('get_schema_fields').then(function (clss) {
+
+        return _schema = clss, clss;
+    })
+}
+$.fn.old_val = $.fn.val;
+$.fn.val = function (val) {
+    var T = this;
+    var target = T.attr('targetclass')
+    // 3 arguments to set val only if exists
+    if (target && (T.data().select2 || T.is('select')) && val !== undefined && arguments[2] === undefined && typeof val !== "object" && !T.prop('multiple')) {
+        if (T.find('option[value="' + val + '"]').length == 0) {
+            //if (arguments.length == 2)
+            T.append(new Option(arguments[1] || val, val, true, true));
+            if (val && arguments.length == 1)
+                Simbla.Object.extend(target).createWithoutData(val).fetch().then(function (obj) {
+                    T.find('option[value="' + obj.id + '"]').remove()
+                    T.append(new Option(decodeEntities(getTextKeyValue(obj, T)), obj.id, true, true)).trigger('change');
+                });
+        }
+
+    }
+    return T.old_val.apply(T, arguments);
+
+};
+window['datetimepickeroptions'] = window['datetimepickeroptions'] || {
     todayBtn: true,
     format: "MM dd, yyyy - hh:ii",
     autoclose: true
@@ -631,7 +706,7 @@ function createSimblaObj(form) {
             $.fn.tagsinput && T.find('[data-type="Array"]').tagsinput('removeAll')
 
 
-            if (!T.is('.dont-reset') && !T.data('dont-reset')) {
+            if ( /*!cls == QueryString.cls &&*/ !T.is('.dont-reset') && !T.data('dont-reset')) {
                 form.reset();
                 T.removeData('val')
                 T.find('.wysiwyg-editor').each(function () {
@@ -892,7 +967,7 @@ function addCriteriaToQuery(q, cls, o) {
                         } else if (i.is('select.select-pointer') && !val && i.attr('val'))
                             val = i.attr('val')
 
-                        if (i.data('criteria') == "containedIn" && typeof val == 'string' && val)
+                        if (["notContainedIn", "containedIn"].indexOf(i.data('criteria')) !== -1 && typeof val == 'string' && val)
                             val = val.split(',');
                         if (val !== undefined && val !== "" && (typeof val != "number" || !isNaN(val)) && (!i.is('.select-pointer') || val != null)) {
 
@@ -1537,8 +1612,8 @@ function simblaCounter() {
 function simblaTable() {
     var m = $(this);
     var cls = m.data('simbla-class');
-    if (!cls) return;
-    var obj = Simbla.Object.extend(cls);
+    if (!cls && !m.is('.dynamic-report')) return;
+    //var obj = Simbla.Object.extend(cls);
     var columns = m.find('table.table thead th');
     var tbl = m.find('table');
     var tbody = m.find('tbody');
@@ -1663,7 +1738,7 @@ function simblaTable() {
     m.data('buildRow', buildRow);
 
     function exportToCsv() {
-        var query = new Simbla.Query(obj);
+        var query = new Simbla.Query(cls);
         query.limit(num);
         var sort = getSort();
 
@@ -1811,7 +1886,7 @@ function simblaTable() {
 
     function query() {
 
-        var query = new Simbla.Query(obj);
+        var query = new Simbla.Query(cls);
         var limit = getLimit();
 
         query.limit(limit);
@@ -1952,8 +2027,14 @@ function simblaTable() {
         }).catch(console.error);
     }
 
+    function updateTotal() {
+        m.find('.paging-area .rows-count').remove();
+        var text = L("Total rows") + ": " + num;
+        m.find('.paging-area').prepend($('<div>').addClass('rows-count').text(text))
+    }
     m.on('row-deleted', function () {
         num--;
+        updateTotal();
         var pagingElem = m.find('.page-selection');
         if (num > getLimit()) {
             var maxVisible = Math.min(Math.floor((pagingElem.parent().width() - 66) / 33), 6);
@@ -1986,16 +2067,20 @@ function simblaTable() {
     });
     m.on('row-added', function () {
         num++;
+        updateTotal()
         summaryLine();
     });
     m.on('row-updated', summaryLine);
 
     function count() {
-        if (m.data("disable-load")) return;
+        cls = m.data('simbla-class');
 
-        addCriteriaToQuery((new Simbla.Query(obj)), cls, m).count({
+        if (!cls || m.data("disable-load")) return;
+
+        addCriteriaToQuery((new Simbla.Query(cls)), cls, m).count({
             success: function (c) {
                 num = c;
+                updateTotal();
                 var pagingElem = m.find('.page-selection');
                 if (num > getLimit()) {
                     var maxVisible = Math.min(Math.floor((pagingElem.parent().width() - 66) / 33), 6);
@@ -2472,7 +2557,17 @@ function simblaFormSubmit(form) {
 }
 
 function showAlert(msg, confirm, confirmCB, closeCB) {
-    console.warn(msg)
+    console.warn(msg);
+    try {
+        $(document).trigger('show-alert', {
+            msg: msg,
+            confirm: confirm
+        });
+    } catch (e) {
+        console.error(e);
+        if (e == "stop") return;
+
+    }
     msg = typeof msg == "object" ? msg.message : msg;
     $('.show-alert-modal').modal('hide')
     var modal = $('<div>').addClass('modal fade show-alert-modal').attr('role', 'dialog').css('overflow', 'hidden');
@@ -3018,7 +3113,7 @@ $(function () {
     $('[type="date"][value]').each(setDateInput);
     $('select.select-pointer:not(.autocomplete):not([disabled])').each(selectPointer);
     $.fn.datetimepicker && $('input.datetime-input').datetimepicker(datetimepickeroptions);
-    $('select.select-pointer.autocomplete:visible').each(select2);
+    $('select.select-pointer.autocomplete:visible,select.select-pointer[multiple]:visible').each(select2);
     $.fn.tagsinput && $('input[data-type="Array"]:visible').tagsinput({ /*confirmKeys: [44]*/ });
 
     $('.simbla-table').each(simblaTable);
@@ -3548,7 +3643,7 @@ $(function () {
         setTimeout(function () {
             $.fn.tagsinput && form.find('input[data-type="Array"]:visible').tagsinput({ /*confirmKeys: [44]*/ });
 
-            form.find('select.select-pointer.autocomplete:visible').each(select2);
+            form.find('select.select-pointer.autocomplete:visible,select.select-pointer[multiple]:visible').each(select2);
         }, 500)
 
         try {
@@ -3689,7 +3784,7 @@ $(function () {
 
         setTimeout(function () {
             $.fn.tagsinput && form.find('input[data-type="Array"]:visible').tagsinput({ /*confirmKeys: [44]*/ });
-            form.find('select.select-pointer.autocomplete:visible').each(select2);
+            form.find('select.select-pointer.autocomplete:visible,select.select-pointer[multiple]:visible').each(select2);
 
         }, 500)
         setDataToForm(obj, form);
@@ -4003,7 +4098,7 @@ $(function () {
             form.data('val', o);
             setDataToForm(o, form);
         }).catch(function (e) {
-            showAlert("Object not found or you dont have permissions to view it");
+            showAlert("Object not found or you don't have permissions to view it");
             console.error(e);
         });
     }
@@ -4138,7 +4233,7 @@ function getSelectPointers(targetClass, selectfields, value, T, name) {
 function selectPointer() {
     var T = $(this);
     var target = T.attr('targetclass')
-    if (target) {
+    if (target && !T.is('[multiple]')) {
         var options = [];
         if (T && T.data('view-key'))
             options.push(T.data('view-key'))
@@ -4179,8 +4274,8 @@ function select2() {
         T.select2({
             theme: "bootstrap",
             debug: false,
-            allowClear: !!T.attr('placeholder'),
-            placeholder: T.attr('placeholder'),
+            allowClear: true, //!!T.attr('placeholder'),
+            placeholder: T.attr('placeholder') || "",
             ajax: {
                 transport: function (params, success, failure) {
                     var qs = params.data.q;
@@ -4260,7 +4355,8 @@ function select2() {
                                 results: results
                             };
                             success(data);
-                            T.val(T.val() || T.attr('val'))
+                            if (T.val() || T.attr('val'))
+                                T.val(T.val() || T.attr('val'))
 
                             if (!select2cach[target]) select2cach[target] = {};
                             select2cach[target][cachString] = data;

@@ -1178,13 +1178,21 @@ body,
 .page-selection {
     text-align: center;
 }
-.simbla-table .page-selection, .simbla-table .rows-selection{
-    display:none;
+
+.simbla-table .page-selection,
+.simbla-table .rows-selection {
+    display: none;
+}
+.simbla-table .rows-selection, .simbla-table .pagination {
+        padding-right: 0;
+
 }
 .rows-selection {
     text-align: center;
 }
-
+.rows-count {
+    text-align: center;
+}
 .rows-selection li {
     display: inline;
 }
@@ -1225,13 +1233,20 @@ body,
     }
     .page-selection {
         width: 40%;
-        margin-left: 30%;
+        /* margin-left: 30%; */
         height: 75px;
     }
     .rows-selection {
         float: right;
         margin: 20px 0px 25px;
         width: 30%;
+    }
+    .rows-count {
+        float: left;
+        width: 30%;
+        text-align: left;
+        padding: 23px 5px;
+        color: #acacac;
     }
 }
 
@@ -1244,9 +1259,11 @@ body,
 .simbla-table thead tr th {
     cursor: pointer;
 }
+
 th.dropdown {
     display: table-cell;
 }
+
 .simbla-table thead tr .fa {
     cursor: pointer;
     line-height: 20px;
@@ -2880,8 +2897,9 @@ select.autocomplete {
     padding: 10px;
     transition: all .2s ease;
 }
+
 .dynamic-query ul.fileds-list li .fa {
-    display:none;
+    display: none;
     float: right;
     padding-top: 0px;
     padding-left: 5px;
@@ -2889,19 +2907,21 @@ select.autocomplete {
     font-size: 23px;
     line-height: 20px;
 }
+
 .rtl.dynamic-query ul.fileds-list li .fa {
     float: left;
 }
+
 .dynamic-query ul.fileds-list li.selected {
     color: #fff;
     background-color: #222;
 }
+
 .dynamic-query ul.fileds-list li.selected .fa {
     display: inline;
-
 }
 
-.dynamic-query .switch-fields button:first-of-type{
+.dynamic-query .switch-fields button:first-of-type {
     margin-top: 80px;
     padding-left: 11px;
 }
@@ -2927,11 +2947,11 @@ select.autocomplete {
     transform: rotate(180deg);
 }
 
-.dynamic-query .switch-fields button.selected{
+.dynamic-query .switch-fields button.selected {
     background-color: #30405c;
 }
 
-.dynamic-query .switch-fields button.selected:hover{
+.dynamic-query .switch-fields button.selected:hover {
     background-color: #222;
 }
 
@@ -3060,31 +3080,71 @@ select.autocomplete {
 .rtl th {
     text-align: right;
 }
+
 .sort-area {
     height: 40px;
 }
-.sort-area>*, .sort-area .btn-group {
+
+.sort-area>*,
+.sort-area .btn-group {
     float: left;
-}.sort-area .btn-group{
+}
+
+.sort-area .btn-group {
     margin-top: -2px;
     margin-left: 5px;
 }
 
-.rtl .sort-area>*, .sort-area .btn-group {
+.rtl .sort-area>*,
+.sort-area .btn-group {
     float: right;
-}.sort-area .btn-group {
+}
+
+.sort-area .btn-group {
     margin-right: 5px;
 }
-.sort-area button {height: 38px !important;font-size: 18px !important;}
+
+.sort-area button {
+    height: 38px !important;
+    font-size: 18px !important;
+}
+
 .sort-area .controls {
     width: 320px;
 }
+
 .sort-area button.active {
     color: #fff;
     background-color: #272A38;
 }
+
 .sort-area button:not(.active) {
     background-color: #ddd;
     color: #999;
 }
+.dynamic-query #permissions ul {
+    margin: 20px 10px;
+    padding: 0;
+}
+
+.dynamic-query #permissions ul li {
+    list-style: none;
+    cursor: pointer;
+    width: 43%;
+}
+
+.dynamic-query #permissions ul li label {
+    cursor: pointer;
+}
+.dynamic-query #permissions .checkbox input[type="checkbox"] {
+    float: right;
+}
+.rtl.dynamic-query #permissions .checkbox input[type="checkbox"] {
+    float: left;
+}
+.rtl .select2-container--bootstrap .select2-selection__clear {
+    margin-left: 10px;
+    margin-right: 0;
+}
+
 /*** END  ***/
